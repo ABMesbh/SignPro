@@ -39,7 +39,7 @@ def index():
             print(transcript)
 
             # Return transcription as a JSON response
-            return jsonify({"transcription": transcript})
+            return jsonify({"transcription": transcript.strip()[0]})
         
 
     return render_template('index.html', transcript=transcript)
