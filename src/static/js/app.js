@@ -150,19 +150,14 @@ function createDownloadLink(blob,encoding) {
 	.then(response => response.json())
     .then(data => {
         // Display the transcription result on the page
-        document.getElementById("speechTranscriptContainer").style.display = "block";
-        document.getElementById("speechText").innerText = data.transcription;
+        document.getElementById("speechText").value = data.transcription;
     })
     .catch(error => {
         console.error("Error uploading audio:", error);
     });
 	console.log("Audio uploaded by post request");
-	// //add the new audio and a elements to the li element
 	li.appendChild(au);
-	// li.appendChild(link);
-
-	// //add the li element to the ordered list
-	// recordingsList.appendChild(li);
+	
 }
 
 
