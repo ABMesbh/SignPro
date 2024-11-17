@@ -13,3 +13,7 @@ poetry run pip install -r requirements.txt
 ```
 poetry run python src/app.py
 ```
+### Update project dependencies
+```
+poetry run pip freeze > requirements.txt
+```

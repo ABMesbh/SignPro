@@ -160,7 +160,22 @@ function createDownloadLink(blob,encoding) {
 	
 }
 
+document.getElementById('captureButton').addEventListener('click', async () => {
+	try {
+		const response = await fetch('/capture', {
+			method: 'POST'
+		});
 
+		const data = await response.json();
+		if (data.error) {
+			alert(data.error);
+		} else {
+			document.getElementById("speechText").value = data.letter;
+		}
+	} catch (error) {
+		console.error('Error:', error);
+	}
+});
 
 //helper function
 // function // __log(e, data) {

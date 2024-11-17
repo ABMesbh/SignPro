@@ -4,9 +4,15 @@ import whisper
 import soundfile as sf
 import os
 from datetime import datetime
+import cv2
+from transformers import pipeline
+from PIL import Image
 
 # Load pre-trained Whisper model
 model = whisper.load_model("small")
+
+# Initialize the OCR pipeline
+ocr_pipeline = pipeline("image-to-text", model="kha-white/manga-ocr-base")
 cap = cv2.VideoCapture(0)
 app = Flask(__name__)
 objectif = ""
@@ -71,6 +77,27 @@ def capture_frames():
         yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
+
+# Function to detect text using the OCR pipeline
+def detect_text(image):
+    result = ocr_pipeline(image)
+    if result:
+        print("Detected text:", result[0]['generated_text'])
+        return result[0]['generated_text'][0]
+    return ""
+
+# Route to capture an image and detect a letter
+@app.route('/capture', methods=['POST'])
+def capture_and_detect():
+    global cap
+    # Capture the image
+    success, image = cap.read()
+    if not success:
+        return jsonify({"error": "Failed to capture image"}), 500
+    img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    # Detect the letter using the OCR pipeline
+    letter = detect_text(Image.fromarray(img))
+    return jsonify({"letter": letter})
 
 if __name__ == "__main__":
     app.run(debug=True, threaded=True)
