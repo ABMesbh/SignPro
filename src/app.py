@@ -1,4 +1,5 @@
-from flask import Flask, jsonify, redirect, render_template, request
+import cv2
+from flask import Flask, jsonify, redirect, render_template, request, Response
 import whisper
 import soundfile as sf
 import os
@@ -6,8 +7,9 @@ from datetime import datetime
 
 # Load pre-trained Whisper model
 model = whisper.load_model("small")
-
+cap = cv2.VideoCapture(0)
 app = Flask(__name__)
+objectif = ""
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -43,6 +45,31 @@ def index():
         
 
     return render_template('index.html', transcript=transcript)
+
+@app.route("/start", methods=["POST"])
+def start():
+    global cap, objectif
+    objectif = request.form.get("transcript")
+    objectif = objectif.lower().strip()[0]
+    print("Objectif: ", objectif)
+    print("Starting recording")
+    return ('', 204)
+
+@app.route("/video_feed")
+def rec():
+    return Response(capture_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+def capture_frames():
+    global cap,objectif
+    while cap.isOpened():
+        success, image = cap.read()
+        if not success:
+            print("Ignoring empty camera frame.")
+            continue
+        ret, buffer = cv2.imencode('.jpg', image)
+        frame = buffer.tobytes()
+        yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 
 if __name__ == "__main__":
