@@ -1,5 +1,3 @@
-# backend
-
 ## Requirements
 ### Poetry
 Poetry is a tool for dependency management and packaging in Python. To install it, you can refer to the documentation using the following link:
