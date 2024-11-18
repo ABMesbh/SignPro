@@ -2,10 +2,14 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from dataUtils import normalizeData
+import os
 
 cap = cv2.VideoCapture(0)
-filename=str(input("name of the txt file :"))+".txt"
-file=open(filename,"a")
+filename=str(input("name of the txt file :"))
+root_path = os.path.dirname(os.path.abspath(__file__))
+# Join the root path with the 'uploads' folder and the file's name
+filepath = os.path.join(root_path, "uploads", filename+".txt")
+file=open(filepath,"a")
 nb=0
 
 mp_drawing = mp.solutions.drawing_utils

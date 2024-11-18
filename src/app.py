@@ -20,7 +20,7 @@ class HandModel(nn.Module):
         super(HandModel, self).__init__()
         self.fc1 = nn.Linear(63, 128)
         self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 4)
+        self.fc3 = nn.Linear(64, 5)
     
     def forward(self, x):
         x = torch.relu(self.fc1(x))
@@ -33,11 +33,13 @@ handmodel = HandModel()
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
-handmodel.load_state_dict(torch.load("src\handmodel.pth"))
+root_path = os.path.dirname(os.path.abspath(__file__))
+# Join the root path with the 'uploads' folder and the file's name
+handmodel.load_state_dict(torch.load(os.path.join(root_path, "uploads", "handmodel.pth")))
 
 # laod classes
 classes = []
-with open("src\classes.txt", "r") as f:
+with open(os.path.join(root_path, "uploads", "classes.txt"), "r") as f:
     for line in f:
         classes.append(line.strip())
 print(classes)
@@ -136,7 +138,7 @@ def capture_frames():
                     objid = classes.index(objectif)
                     id = torch.argmax(output).item()
                     res = torch.max(output).item()
-                    if id == objid and res > 0.85:
+                    if id == objid and res > 0.85 and objid !=4:
                         print("Objectif atteint")
                         objectif = ""
                         result = True
