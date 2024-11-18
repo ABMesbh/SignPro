@@ -41,13 +41,13 @@
                         <button id="captureButton" class="btn btn-primary">Capture</button>
                     </div>
                 <img id="video_feed" src="http://127.0.0.1:5000//video_feed" style="border: 1px solid black; max-width: 100%; height: auto;">
+                <img id="image" src="" style="max-width: 100%; height: auto;">
+                <p id="score">
                 </div>
             <div class="p-4 mt-4" >
                 <h3>Word</h3>
-                <form method="POST" action="/start">
-                    <input type="text" id="speechText" class="form-control" name="transcript" placeholder="Enter text here" />
-                    <button type="submit" class="btn btn-primary">Start</button>
-                </form>
+                <input type="text" id="speechText" class="form-control" name="transcript" placeholder="Enter text here" />
+                <button type="submit" id="startButton" class="btn btn-primary">Start</button>
                 <!-- <p id="speechText" class="fs-5">{{ transcript }}</p> -->
             </div>
         </div>
