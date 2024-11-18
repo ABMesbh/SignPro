@@ -177,6 +177,27 @@ document.getElementById('captureButton').addEventListener('click', async () => {
 	}
 });
 
+document.getElementById('startButton').addEventListener('click', async () => {
+	const text = document.getElementById('speechText').value;
+	const video_feed = document.getElementById('video_feed');
+	const image = document.getElementById('image');
+	const firstLetter = text.charAt(0).toLowerCase();
+	image.src = `static/${firstLetter}.jpg`;
+	video_feed.style.display = 'none';
+	image.style.display = 'block';
+	const formData = new FormData();
+    formData.append("transcript", text);
+
+	const response = await fetch('/start', {
+		method: 'POST',
+		body:formData
+
+	});
+	const data = await response.json();
+	video_feed.style.display = 'block';
+	image.style.display = 'none';
+});
+
 //helper function
 // function // __log(e, data) {
 // 	log.innerHTML += "\n" + e + " " + (data || '');
