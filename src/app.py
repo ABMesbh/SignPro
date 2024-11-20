@@ -49,10 +49,11 @@ model = whisper.load_model("small")
 
 # Initialize the OCR pipeline
 ocr_pipeline = pipeline("image-to-text", model="kha-white/manga-ocr-base")
-cap = cv2.VideoCapture(0)
 app = Flask(__name__)
+
 objectif = ""
 result = False
+cap = None 
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -86,73 +87,105 @@ def index():
             # Return transcription as a JSON response
             return jsonify({"transcription": transcript.strip()[0]})
         
-    global cap
-    cap = cv2.VideoCapture(0)
     return render_template('index.html', transcript=transcript)
 
 @app.route("/start", methods=["POST"])
 def start():
-    global cap, objectif,result
+    global objectif, result, cap
     result = False
-    objectif = request.form.get("transcript")
-    objectif = objectif.lower().strip()[0]
-    print("Starting learning mode")
+    objectif = request.form.get("transcript", "").lower().strip()[0]
+    print("Starting learning mode with objectif:", objectif)
+
+    # Open the camera when `/start` is accessed
+    if cap is None or not cap.isOpened():
+        cap = cv2.VideoCapture(0)
+        print("Camera opened")
+        if not cap.isOpened():
+            print("Failed to access camera")
+            return jsonify({"error": "Failed to access camera"}), 500
+
     time.sleep(5)
     return jsonify({"end": "None"})
 
+
 @app.route("/video_feed")
-def rec():
-    return Response(capture_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+def video_feed():
+    return Response(capture_frames(), mimetype="multipart/x-mixed-replace; boundary=frame")
+
 
 def capture_frames():
-    global cap,objectif,result
+    global objectif, result, cap
     score = 0
-    while cap.isOpened():
-        success, image = cap.read()
-        if not success:
-            print("Ignoring empty camera frame.")
-            continue
-        
-        if objectif != "" and not result:
-            with mp_hands.Hands(model_complexity=0,max_num_hands=1,min_detection_confidence=0.5,min_tracking_confidence=0.5) as hands:
-                image.flags.writeable = False
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                results = hands.process(image)
+    
+    while True:
+        i=0
+        while cap is None:
+            time.sleep(1)
+        while cap and cap.isOpened():  
+            success, image = cap.read()
+            if not success:
+                print("Ignoring empty camera frame.")
+                continue
 
-                image.flags.writeable = True
-                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            if objectif != "" and not result:
+                with mp_hands.Hands(
+                    model_complexity=0, max_num_hands=1, min_detection_confidence=0.5, min_tracking_confidence=0.5
+                ) as hands:
+                    image.flags.writeable = False
+                    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                    results = hands.process(image)
 
-                if results.multi_hand_landmarks:
-                    for hand_landmarks in results.multi_hand_landmarks:
-                        mp_drawing.draw_landmarks(image,hand_landmarks,mp_hands.HAND_CONNECTIONS,
-                                                  mp_drawing_styles.get_default_hand_landmarks_style(),
-                                                  mp_drawing_styles.get_default_hand_connections_style())
+                    image.flags.writeable = True
+                    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-                    a=np.array([[res.x, res.y, res.z] for res in hand_landmarks.landmark]).flatten()
-                    a=normalizeData(a)
-                    a = torch.tensor(a).float()
-                    image = cv2.flip(image, 1)
-                    output = handmodel(a)
-                    print("Output: ", output)
-                    global classes
-                    objid = classes.index(objectif)
-                    id = torch.argmax(output).item()
-                    res = torch.max(output).item()
-                    if id == objid and res > 0.85 and objid !=4:
-                        print("Objectif atteint")
-                        objectif = ""
-                        result = True
-                        score = (res-0.85)/(1-0.85)
-        elif result and objectif == "":
-            #afficher le score
-            image = cv2.rectangle(image, (0,0), (int(cap.get(3)),int(cap.get(4)*0.1)), (0, 0, 0), -1)
-            image = cv2.putText(image, "Score: "+str(score), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-        ret, buffer = cv2.imencode('.jpg', image)
-        frame = buffer.tobytes()
-        yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                    if results.multi_hand_landmarks:
+                        for hand_landmarks in results.multi_hand_landmarks:
+                            mp_drawing.draw_landmarks(
+                                image,
+                                hand_landmarks,
+                                mp_hands.HAND_CONNECTIONS,
+                                mp_drawing_styles.get_default_hand_landmarks_style(),
+                                mp_drawing_styles.get_default_hand_connections_style(),
+                            )
 
+                        a = np.array([[res.x, res.y, res.z] for res in hand_landmarks.landmark]).flatten()
+                        a = normalizeData(a)
+                        a = torch.tensor(a).float()
+                        image = cv2.flip(image, 1)
+                        output = handmodel(a)
+                        print("Output: ", output)
+                        objid = classes.index(objectif)
+                        id = torch.argmax(output).item()
+                        res = torch.max(output).item()
+                        if id == objid and res == 1 and objid != 4:
+                            print("Objectif atteint")
+                            objectif = ""
+                            result = True
+                            score = res
 
+            elif result and objectif == "":
+                # Display the score
+                image = cv2.rectangle(image, (0, 0), (int(cap.get(3)), int(cap.get(4) * 0.1)), (0, 0, 0), -1)
+                image = cv2.putText(
+                    image,
+                    "Score: " + str(round(score, 2)),
+                    (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (255, 255, 255),
+                    2,
+                    cv2.LINE_AA,
+                )
+                i += 1
+                if i == 3:
+                    cap.release()
+                    cap = None
+                    break
+                    # yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n\r\n")
+            ret, buffer = cv2.imencode(".jpg", image)
+            frame = buffer.tobytes()
+            yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
+            
 # Function to detect text using the OCR pipeline
 def detect_text(image):
     result = ocr_pipeline(image)
@@ -161,18 +194,30 @@ def detect_text(image):
         return result[0]['generated_text'][0]
     return ""
 
-# Route to capture an image and detect a letter
 @app.route('/capture', methods=['POST'])
 def capture_and_detect():
-    global cap
-    # Capture the image
-    success, image = cap.read()
-    if not success:
-        return jsonify({"error": "Failed to capture image"}), 500
-    img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    # Detect the letter using the OCR pipeline
-    letter = detect_text(Image.fromarray(img))
-    return jsonify({"letter": letter})
+    # Ensure an image file is part of the request
+    if 'image' not in request.files:
+        return jsonify({"error": "No image file uploaded"}), 400
+    
+    image_file = request.files['image']
+
+    try:
+        # Convert the uploaded image to a format suitable for OpenCV
+        file_bytes = np.frombuffer(image_file.read(), np.uint8)
+        img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+
+        if img is None:
+            return jsonify({"error": "Failed to process uploaded image"}), 500
+
+        # Convert the image to RGB format for PIL
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        # Perform OCR to detect the letter
+        letter = detect_text(Image.fromarray(img_rgb))
+        return jsonify({"letter": letter})
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, threaded=True)

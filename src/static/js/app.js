@@ -15,6 +15,9 @@ var encodingTypeSelect = document.getElementById("encodingTypeSelect");
 var recordButton = document.getElementById("recordButton");
 var stopButton = document.getElementById("stopButton");
 
+const webcamVideo = document.getElementById('webcamVideo');
+const takePhotoButton = document.getElementById('take_letter_photo');
+
 //add events to those 2 buttons
 recordButton.addEventListener("click", startRecording);
 stopButton.addEventListener("click", stopRecording);
@@ -161,20 +164,71 @@ function createDownloadLink(blob,encoding) {
 }
 
 document.getElementById('captureButton').addEventListener('click', async () => {
-	try {
-		const response = await fetch('/capture', {
-			method: 'POST'
-		});
+	webcamVideo.display = 'block';
+	takePhotoButton.display = 'block';
+	const constraints = {
+		video: {
+			width: { min: 1280 },
+			height: { min: 720 },
+			facingMode: 'user'
+		},
+		audio: false
+	};
+	
+	navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
+		webcamVideo.srcObject = stream;
+	
+	}).catch((error) => {
+		console.error('Error accessing media devices.', error);
+	});
 
-		const data = await response.json();
-		if (data.error) {
-			alert(data.error);
-		} else {
-			document.getElementById("speechText").value = data.letter;
-		}
-	} catch (error) {
-		console.error('Error:', error);
-	}
+	takePhotoButton.addEventListener('click', () => {
+		const canvas = document.createElement('canvas');
+		const context = canvas.getContext('2d');
+		canvas.width = webcamVideo.videoWidth;
+		canvas.height = webcamVideo.videoHeight;
+		context.drawImage(webcamVideo, 0, 0, webcamVideo.videoWidth, webcamVideo.videoHeight);
+		canvas.toBlob(async (blob) => {
+			const formData = new FormData();
+			formData.append('image', blob, 'image.jpg');
+			const response = await fetch('/capture', {
+				method: 'POST',
+				body: formData
+			});
+			const data = await response.json();
+			if (data.error) {
+				alert(data.error);
+			} else {
+				document.getElementById("speechText").value = data.letter;
+				webcamVideo.style.display = 'none';
+				takePhotoButton.style.display = 'none';
+
+				// Stop the video stream to turn off the camera
+				const stream = webcamVideo.srcObject;
+				const tracks = stream.getTracks(); // Get all media tracks (video/audio)
+				tracks.forEach((track) => track.stop()); // Stop each track
+				webcamVideo.srcObject = null; // Clear the video source
+
+			}
+		});
+	});
+	
+	
+
+	// try {
+	// 	const response = await fetch('/capture', {
+	// 		method: 'POST'
+	// 	});
+
+	// 	const data = await response.json();
+	// 	if (data.error) {
+	// 		alert(data.error);
+	// 	} else {
+	// 		document.getElementById("speechText").value = data.letter;
+	// 	}
+	// } catch (error) {
+	// 	console.error('Error:', error);
+	// }
 });
 
 document.getElementById('startButton').addEventListener('click', async () => {
@@ -187,7 +241,7 @@ document.getElementById('startButton').addEventListener('click', async () => {
 	image.style.display = 'block';
 	const formData = new FormData();
     formData.append("transcript", text);
-
+	
 	const response = await fetch('/start', {
 		method: 'POST',
 		body:formData
@@ -197,8 +251,3 @@ document.getElementById('startButton').addEventListener('click', async () => {
 	video_feed.style.display = 'block';
 	image.style.display = 'none';
 });
-
-//helper function
-// function // __log(e, data) {
-// 	log.innerHTML += "\n" + e + " " + (data || '');
-// }
