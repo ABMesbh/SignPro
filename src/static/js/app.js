@@ -164,8 +164,8 @@ function createDownloadLink(blob,encoding) {
 }
 
 document.getElementById('captureButton').addEventListener('click', async () => {
-	webcamVideo.display = 'block';
-	takePhotoButton.display = 'block';
+	// webcamVideo.display = 'block';
+	// takePhotoButton.display = 'block';
 	const constraints = {
 		video: {
 			width: { min: 1280 },
@@ -200,8 +200,8 @@ document.getElementById('captureButton').addEventListener('click', async () => {
 				alert(data.error);
 			} else {
 				document.getElementById("speechText").value = data.letter;
-				webcamVideo.style.display = 'none';
-				takePhotoButton.style.display = 'none';
+				// webcamVideo.style.display = 'none';
+				// takePhotoButton.style.display = 'none';
 
 				// Stop the video stream to turn off the camera
 				const stream = webcamVideo.srcObject;
