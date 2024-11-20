@@ -157,7 +157,7 @@ def capture_frames():
                         objid = classes.index(objectif)
                         id = torch.argmax(output).item()
                         res = torch.max(output).item()
-                        if id == objid and res == 1 and objid != 4:
+                        if id == objid and res >= 0.98 and objid != 4:
                             print("Objectif atteint")
                             objectif = ""
                             result = True
